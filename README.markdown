@@ -1,80 +1,94 @@
 Name
 ====
 
-thrift_ycc - thrift 文件解析器，用python编写，提供了非常细致的解析接口
+英文：chunk_offset_mem_struct_lib
+中文：基于块和偏移的通用数据架构库
+
+Description
+===========
+1，	一种适合于各种介质的通用的数据结构，
+		比如，自有内存，共享内存，硬盘，管道，socket 等等，
+		即数据在内存和硬盘以及其他介质中的表示一样，
+		这样就不需要任何编解码而保证数据在各类介质之中通畅流通；
+2，	业务数据建立在1上面，且有自己完全独立的环境，
+		包括：独有的内存管理，独有的内存页面（和其他业务数据的内存页面完全分开）；
+		当然这些业务数据肯定都会稍微有点大，否则就有点牛刀来杀鸡了；
+	
+
+其他的优点：
+1，	内存管理简单了，不会有什么内存泄漏；回收某个业务数据，只是简单的将
+		其所占有的内存页面一一释放即可；就好比操作系统管理进程资源一样，
+		即使进程内存泄漏，最终进程一结束，资源肯定全回收；
+2，	另稍加一些代码，就可以带来非常强壮和健壮的共享内存设计；
+
+Usage
+=====
+{
+        ChkIndex  chk_index;
+        ChkPtr chk_ptr, chkptr_tmp;
+
+        ChkStr  test_change_name, test_change2;
+        test_change_name.init();
+        test_change2.init();
+        
+        const char* test_strs[] = {"fdsafasdgadsgsdaffads",
+                "'", "。", "133355", "fdsafasd", "fdsafas", "fdsafasd", 
+                "aa", "bbbbb", "c", "dddddd", "123456789", "1234567", "123456"};
+
+        for (int try_cnt = 0; try_cnt < 4; ++try_cnt)
+        {
+                FOR_EACH_A(test_strs, i)
+                {
+                        std::cout << "set name=" << test_strs[i] << std::endl;
+                        
+                        test_change_name.set_data(test_strs[i], strlen(test_strs[i]), &chk_index);
+                        ASSERT_EQ(std::string(test_strs[i]), 
+                                        std::string(test_change_name.c_str(&chk_index)));
+
+                        int itmp = ARRAY_SIZE(test_strs) - 1 - i;
+                        std::cout << "set name2=" << test_strs[itmp] << std::endl;
+                        test_change2.set_data(test_strs[itmp], strlen(test_strs[itmp]), &chk_index);
+                        ASSERT_EQ(std::string(test_strs[itmp]), 
+                                        std::string(test_change2.c_str(&chk_index)));
+                }
+        }
+        
+        ChkPtr chk_ptr_list = chk_index.alloc(sizeof(ChkSList));
+        ASSERT_TRUE(!chk_ptr_list.is_null());
+
+        ChkSList*  str_list = chk_ptr2addr(&chk_index, chk_ptr_list, ChkSList);
+        //must init list
+        chk_slist_init(str_list);
+
+        ChkAddrChk addrchk;
+
+        std::string str_cmp[12800];
+        for (size_t i = 0; i < ARRAY_SIZE(str_cmp); ++i)
+        {
+                str_cmp[i] = random_str(i);
+                
+                chk_ptr = chk_index.alloc(sizeof(StrNode));
+                ASSERT_TRUE(!chk_ptr.is_null());
+                std::cout<<"alloc node ptr=" << chk_ptr << std::endl;
+
+                StrNode* str_node = chk_ptr2addr(&chk_index, chk_ptr, StrNode);
+                str_node->data.init();
+                str_node->data.set_data(str_cmp[i].c_str(), str_cmp[i].length(), &chk_index);
+
+                chk_set_addrchk(addrchk, (char*)&str_node->link, 
+                                chk_ptr2chk(&chk_index, chk_ptr));
+                
+                chk_slist_push(&addrchk, str_list);
+        }
+}
 
 Status
 ======
 
-一个小工具，主要用于自动生成代码用
+1，资源（内存）管理功能完备
+2，基本的数据结构部分完成，包括：string，单向链表，双向链表，hash list；
 
-Description
-===========
-thrift 协议非常方便，可用于协议通信，数据存储等等，thrift 自带生成了c++，java，php，python等工具；
-thrift 做为一种 DSL，对于普通的协议代码生成一般来说足够了，但实际上：
-
-1，自带生成的协议语言毕竟有限，如果你用的是一类比较偏门的语言，那很可能就不能想用thrift协议
-2，如果你想从thrift中搞出一点有趣的事情，比如假如你的thrift中定义的数据结构是数据库相关表
-		如果再手动去写相关的sql语句，那肯定是非常枯燥蛋疼的事情
-		为什么不写个脚本去分析下 thrift 文件，然后生成 sql 语句呢？多么美好的事情啊
-
-当项目中使用 thrift 越来越多，对 thrift 越来越依赖的时候，thrift 原本自带的工具显得不够用了，
-于是，能够解析thrift语法，且根据自己的需求写出一些东东的需要日益强烈，且解析 thrift 本身是一件
-非常有意思的事情，值得一干；
-
-于是在一个双周末，花了大概5个小时左右，用 python 写出了解析代码；本身解析其实还是比较简单的；
-顺带完成的从 thrift -> tolua++ pgk 代码生成还是花了其中大部分时间的；
-
-thrift_ycc.py 为解析代码，解析就一个类 ThriftYcc,蛮简单的；
-支持thrift所有DSL格式，包括：
-		名字空间/namespace，包含/include，enum，struct，字段，field默认值，注释等等
-
-这个文件中的另外一个类是一个非常简单的测试类，把解析后的类再拼回到 thrift 格式，可以当作一个简单的
-thrift 格式化工具；
-
-
-class ThriftYccTest(ThriftYcc):
-
-	def on_def_namespace(self, nm_array):
-		print("namespace cpp %s\n"%(string.join(nm_array, ".")))
-	def on_include(self, pre_path, thrift_name):
-		print("include %s.thrift\n"%(os.path.join(pre_path, thrift_name)))
-	def on_st_begin(self, st_name):
-		print("struct %s {"%(st_name))
-	def on_st_end(self):
-		print("}\n")
-	def on_st_smp_field(self, index, name, type, thrift_name, vdefault):
-		if thrift_name:
-			type = thrift_name + "." + type
-		if vdefault:
-			name = name + " = " + vdefault
-		print("\t%d:%s %s,"%(index, type, name))
-	def on_st_vec_field(self, index, name, type, thrift_name):
-		if thrift_name:
-			type = thrift_name + "." + type
-		print("\t%d:list<%s> %s,"%(index, type, name))
-	def on_st_map_field(self, index, name, type0, tname0, type1, tname1):
-		if tname0:
-			type0 = tname0 + "." + type0
-		if tname1:
-			type1 = tname1 + "." + type1
-		print("\t%d:map<%s, %s> %s"%(index, type0, type1, name))
-        def on_enum_begin(self, enum_name):
-                print("struct %s { enum {"%(enum_name))
-        def on_child_enum(self, child_enum, vdefault):
-		if vdefault:
-			child_enum = child_enum + " = " + vdefault
-                print("\t%s,"%(child_enum))
-	def on_enum_end(self):
-		print("};}\n")
-		
-		
-至于 lib 中的另外一个文件：tolua_thrift.py 和 lua_* 等代码，是我用 thrift_ycc 写的
-thrift 到 tolua++ 的 pkg 代码生成工具，这个工具会根据thrift中的“include”指令，自动
-递归分析下去；还是有点小成就感的；
-
-Btw
-===========
-正则表达式真的非常强大，这回用python耍了一把，python的正则表达式的功能基本来源于 perl，
-但我感觉最简洁最强大的正则表达式功能还是用 perl 爽，非常简单牛逼，当然写出来的代码可读性
-就...有点天书感...
+ToDo
+======
+1，继续完善底层资源管理，包括：资源整理（主要用于释放空闲内存）
+2，加入更多的数据结构，比如：vector，map
