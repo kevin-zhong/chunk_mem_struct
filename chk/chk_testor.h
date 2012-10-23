@@ -48,7 +48,7 @@ struct  StrNode
 
         struct  hash_func
         {
-                uint32_t operator()(ChkIndex* chk_index, void* str_node) const
+                uint32_t operator()(ChkIndex* chk_index, void* str_node, void* data) const
                 {
                         unsigned long __h = 0;
                         for (const char *__s = ((StrNode*)str_node)->data.c_str(chk_index); *__s; ++__s)
@@ -58,7 +58,7 @@ struct  StrNode
         };
         struct  hash_eq
         {
-                bool  operator()(ChkIndex* chk_index, void* str_node, const std::string& rh) const
+                bool  operator()(ChkIndex* chk_index, void* str_node, const std::string& rh, void* data) const
                 {
                         ChkStr*  data_ptr = &((StrNode*)str_node)->data;
                         return  data_ptr->length() == rh.length() 
@@ -220,7 +220,7 @@ TEST_F(ChkTestorCase, TestHashList)
                 str_node->data.init();
                 str_node->data.set_data(str_cmp[i].c_str(), str_cmp[i].length(), &chk_index);
 
-                hash_vals[i] = hash_func(&chk_index, str_node);
+                hash_vals[i] = hash_func(&chk_index, str_node, NULL);
                 //std::cout << "test str=" << str_cmp[i] 
                                 //<< ", hash_val=" << hash_vals[i] << std::endl;
 

@@ -52,11 +52,12 @@ struct  ChkHashSList : public LoggerTpl2<ChkHashSList>
                                         + (key_hash % bucket_num);
                 }
         }
-        
-        //TEqFunc = bool(chk_index, void*, TTarget& key)
+
+        //last param used for callback+data
+        //TEqFunc = bool(chk_index, void*, TTarget& key, void*)
         template<typename TEqFunc, typename TTarget>
         std::pair<ChkPtr, ChkSlistNode*> find(ChkIndex* chk_index, int container_offset
-                        , TEqFunc& eq_func, const TTarget& key, uint32_t key_hash)
+                        , TEqFunc& eq_func, const TTarget& key, uint32_t key_hash, void* data=NULL)
         {
                 ChkSlistNode* target_list = get_list(chk_index, key_hash);
 
@@ -64,7 +65,7 @@ struct  ChkHashSList : public LoggerTpl2<ChkHashSList>
                 ChkSlistNode *pos, *pre;
                 chk_slist_for_each_pre(chkptr, pos, pre, target_list, chk_index)
                 {
-                        if (eq_func(chk_index, (char*)pos - container_offset, key))
+                        if (eq_func(chk_index, (char*)pos - container_offset, key, data))
                         {
                                 return  std::pair<ChkPtr, ChkSlistNode*>(chkptr, pre);
                         }
@@ -85,10 +86,10 @@ struct  ChkHashSList : public LoggerTpl2<ChkHashSList>
                 return chk_slist_erase(target_list, chk_index, node);
         }
 
-        //THashFunc = uint32_t(chk_index, void*)
+        //THashFunc = uint32_t(chk_index, void*, void*)
         template<typename THashFunc>
         int  resize_buckets(ChkIndex* chk_index, int new_size
-                        , THashFunc& hash_func, int container_offset)
+                        , THashFunc& hash_func, int container_offset, void* data=NULL)
         {
                 int  bucket_num = bucket_size();
                 if (bucket_num == new_size) 
@@ -132,7 +133,7 @@ struct  ChkHashSList : public LoggerTpl2<ChkHashSList>
                         
                         chk_slist_for_each_safe(ptr_iter, ptr_tmp, pos, tmp, old_list, chk_index)
                         {
-                                key_hash = hash_func(chk_index, (char*)pos - container_offset);
+                                key_hash = hash_func(chk_index, (char*)pos - container_offset, data);
                                 new_list = new_buckets + key_hash % new_size;
 
                                 addr_chk = chk_ptr2addrchk(chk_index, ptr_iter);

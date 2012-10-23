@@ -72,7 +72,7 @@ void  ChkMemMgr::free(ChkPtr chk_ptr, ChkIndex* chk_index)
                         {
                                 chk_ptr._size = free_size[i];
                                 addr_chk = chk_ptr2addrchk(chk_index, chk_ptr);
-                                
+                               
                                 bzero(addr_chk.addr, CHK_SIZE(chk_ptr._size));
                                 
                                 chk_slist_push(&addr_chk, &_free_list[i]);

@@ -218,6 +218,8 @@ void  ChkMetadata::destruct(ChkMetadata* old)
 
 inline ChkMemMgr* ChkIndex::mem_mgr()
 {
+        if (_chk_num == 0)
+                return  NULL;
         return  (ChkMemMgr*)((char*)_chk_addr[0] + chk_align_def(sizeof(ChkMetadata)));
 }
 
@@ -342,6 +344,14 @@ int  ChkIndex::enlarge()
         return  0;
 }
 
+void  ChkIndex::swap(ChkIndex& rh)
+{
+        char mid_buf[sizeof(ChkIndex)];
+        memcpy(mid_buf, &rh, sizeof(ChkIndex));
+        rh = *this;
+        memcpy(this, mid_buf, sizeof(ChkIndex));
+}
+
 
 ChkPtr ChkIndex::alloc(int size)
 {
@@ -405,6 +415,8 @@ try_again:
                                 {
                                         ChkPtr collect_ptr = chk_metadata->alloc(reset_size);
                                         mem_mgr()->free(collect_ptr, this);
+
+                                        mem_mgr()->_total_free += SET_CHK_SIZE(reset_size);
                                 }
                         }
                         goto try_again;
@@ -478,6 +490,9 @@ char* ChkIndex::boot_addr()
 
 void  ChkIndex::destruct()
 {
+        if (_chk_num == 0)
+                return;
+        
         if (_compressed)
         {
                 char* compressed_bytes = (char*)_chk_addr[0];
@@ -659,7 +674,7 @@ static char* chk_compress(ChkIndex* chk_index)
 
 int  ChkIndex::compress(int target_compress_percent)
 {
-        if (_compressed)
+        if (_chk_num == 0 || _compressed)
                 return 0;
 
         ChkMemMgr* pmem_mgr = mem_mgr();
@@ -750,7 +765,8 @@ int  ChkIndex::uncompress()
         _chk_addr[0]->_alloc_capacity = SET_CHK_CAPACITY(align_capacity);
         assert(capacity_caculate == _chk_addr[0]->_alloc_capacity);
         
-        DEBUG_LOG("mem capacity from org=" << mem_mgr()->_total_capacity
+        DEBUG_LOG("after uncompress, mem capacity from org=" 
+                                << mem_mgr()->_total_capacity
                                 << ", to=" << _chk_addr[0]->_alloc_capacity);
         mem_mgr()->_total_capacity = _chk_addr[0]->_alloc_capacity;
 

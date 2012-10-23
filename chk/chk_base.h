@@ -180,6 +180,8 @@ struct  ChkIndex
                 _chk_num = 0;
         }
 
+        void  swap(ChkIndex& rh);
+
         void  destruct();
 
         int     init_boot(int boot_size);
@@ -192,6 +194,7 @@ struct  ChkIndex
         void  shrink();
         int  enlarge();
         int  compress(int target_compress_percent = 1000);
+        int  uncompress();
         
         bool  is_continuous_chunk();
 
@@ -200,7 +203,6 @@ struct  ChkIndex
 private:
         int  split_continuous_chunk();
         int  chk_enlarge(int just_ext_chk = 0);
-        int  uncompress();
 
         DEBUG_LOG_DECL(_logger);
 };

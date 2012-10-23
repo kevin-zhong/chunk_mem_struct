@@ -121,7 +121,7 @@ struct ChkStr
                                 chk_index->free(chk_data.data_ptr);
                                 chk_data.flag = 0;
                         }
-                        memcpy(data, buf, buf_len);
+                        memmove(data, buf, buf_len);
                         data[buf_len] = 0;
                         return  0;
                 }
@@ -129,7 +129,7 @@ struct ChkStr
                 if (chk_data.flag && chk_data.str_len >= buf_len)
                 {
                         char* str_addr = c_str(chk_index);
-                        memcpy(str_addr, buf, buf_len);
+                        memmove(str_addr, buf, buf_len);
                         
                         chk_data.str_len = buf_len;
                         str_addr[buf_len] = 0;
@@ -151,7 +151,7 @@ struct ChkStr
                 chk_data.str_len = buf_len;
 
                 char* str_addr = c_str(chk_index);
-                memcpy(str_addr, buf, buf_len);
+                memmove(str_addr, buf, buf_len);
                 str_addr[buf_len] = 0;
                 return  0;
         }
